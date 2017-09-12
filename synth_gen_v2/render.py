@@ -1,0 +1,176 @@
+#!/usr/bin/env python
+
+"""
+@Author : Mohit Jain
+@Email  : develop13mohit@gmail.com
+
+@About  : Script to render simple number plate images. 
+"""
+
+# Imports
+import os
+import sys
+import random
+
+import argparse
+import progressbar
+
+from PIL import Image
+from PIL import ImageFont
+from PIL import ImageDraw 
+
+def load_fonts(font_dir):
+    """
+    args:
+        -font_dir : path to directory containing font tff's
+    return:
+        -fonts : dictionary of fonts loaded with various font sizes as keys for each font type
+    """
+    fonts = {}
+
+    font_sizes = [120, 130, 140, 160, 180]
+    font_tffs = [os.path.join(font_dir,i) for i in os.listdir(font_dir) if i.lower().endswith('.tff') or i.lower().endswith('.ttf')]
+
+    bar = progressbar.ProgressBar(maxval=len(font_tffs)).start()
+    for i, font in enumerate(font_tffs):
+        font_name = '-'.join(font.split('/')[-1].split('.')[:-1]).replace(' ','-')
+        fonts[font_name] = {}
+        
+        for size in font_sizes:
+            fonts[font_name][str(size)] = ImageFont.truetype(font, size)
+        
+        bar.update(i)   
+
+    print "Done."
+
+    return fonts
+
+def load_bg_imgs(bg_imgs_dir):
+    """
+    args:
+        -bg_imgs_dir : path to directory containing bg images
+    return:
+        -bg_imgs : dictionary of bg image paths with image-name as key
+    """
+    bg_imgs = {}
+    
+    bg_imgs_path = [os.path.join(bg_imgs_dir,i) for i in os.listdir(bg_imgs_dir) if i.endswith('.png')]
+
+    bar = progressbar.ProgressBar(maxval=len(bg_imgs_path)).start()
+    for i, img in enumerate(bg_imgs_path):
+        img_name = '-'.join(img.split('/')[-1].split('.')[:-1]).replace(' ','-')
+        bg_imgs[img_name] = img
+
+    print "Done."
+
+    return bg_imgs
+
+def load_common():
+    """
+    return:
+        -common : dictionary containing common variables for number plate text generation.
+    """
+    common = {}
+    
+    STATES = ['AN','AP','AP','AP','AP','AR','AS','BR','CG','CH','DD','DL','DL','DL','DL','DL','DN','GA','GJ','HR','HP','JH','JK','KA','KL','LD','MH','    ML','MN','MP','MP','MP','MP','MZ','NL','OD','PB','PY','RJ','SK','TN','TR','TS','UK','UP','WB']
+    NUMBERS = '0123456789'
+    LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    DELIM = '  .'
+
+    common['STATES'] = STATES
+    common['NUMBERS'] = NUMBERS
+    common['LETTERS'] = LETTERS
+    common['DELIM'] = DELIM
+
+    print "Done."
+
+    return common
+
+def gen_text(common):
+    """
+    args:
+        -common : dict of common variables.
+    return:
+        -text : random permutation of possible common-texts.
+    """
+    state = random.choice(common['STATES'])
+    delim = random.choice(common['DELIM'])
+    dig1 = random.choice(common['NUMBERS'])
+    dig2 = random.choice(common['NUMBERS'])
+    let1 = random.choice(common['LETTERS'])
+    let2 = random.choice(common['LETTERS'])
+    dig3 = random.choice(common['NUMBERS'])
+    dig4 = random.choice(common['NUMBERS'])
+    dig5 = random.choice(common['NUMBERS'])
+    dig6 = random.choice(common['NUMBERS'])
+    
+    """
+    TODO : Support multiple formats.
+    """
+    text = "{}{}{}{}{}{}{}{}{}{}{}{}".format(state, delim, dig1, dig2, delim, let1, let2, delim, dig3, dig4, dig5, dig6)
+
+    return text
+
+def render(n_imgs, common, fonts, bg_imgs, out_dir):
+    """
+    args:
+        -n_imgs : number of images to render.
+        -common : dict of common variables.
+        -fonts  : dict of loaded fonts.
+        -bg_imgs: dict of loaded bg images.
+    return:
+        None
+    """
+    bar = progressbar.ProgressBar(maxval=n_imgs).start()
+    for i in range(n_imgs):
+        # Generate random number plate combination
+        plate_text = gen_text(common)
+
+        # Chose bg image
+        bg_img_name = random.choice(bg_imgs.keys())
+        bg_img = Image.open(bg_imgs[bg_img_name])
+
+        # Chose font style and size
+        font_name = random.choice(fonts.keys())
+        font_type = fonts[font_name]
+        font_size = random.choice(font_type.keys())
+        font = font_type[font_size]
+
+        # Overlay text on bg image
+        canvas = ImageDraw.Draw(bg_img)
+        """
+        TODO : Add offset for starting co-ordinate based on image type (fetch from image name).
+             : Randomize color extraction.
+        """
+        x_cood = 100
+        y_cood = (200-int(font_size))/2
+
+        canvas.text((x_cood, y_cood), plate_text, (0,0,0), font=font)
+
+        # Save Image
+        out_img_name = '_'.join([bg_img_name.split('.')[0], font_name, font_size, plate_text, '.png'])
+        bg_img.save(os.path.join(out_dir, out_img_name))
+
+        bar.update(i)
+
+    print "Done."
+
+if __name__=='__main__':
+    parser = argparse.ArgumentParser(description='Render synthetic number plates.')
+    parser.add_argument('font_dir',type=str,nargs='?',help='path to fonts directory',default='./fonts')
+    parser.add_argument('bg_imgs_dir',type=str,nargs='?',help='path to bg-images directory',default='./cleaned')
+    parser.add_argument('out_dir',type=str,nargs='?',help='path to store the rendered images',default='./out_render')
+    parser.add_argument('n_imgs',type=int,nargs='?',help='number of images to render',default='100')
+    args = parser.parse_args()
+
+    print "[INFO] Loading Fonts"
+    fonts = load_fonts(args.font_dir)
+
+    print "[INFO] Loading Background Images"
+    bg_imgs = load_bg_imgs(args.bg_imgs_dir)
+
+    print "[INFO] Loading Common Variables"
+    common = load_common()
+
+    print "[INFO] Rendering Synthetic Images"
+    render(args.n_imgs, common, fonts, bg_imgs, args.out_dir)
