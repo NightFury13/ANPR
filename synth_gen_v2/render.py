@@ -111,6 +111,21 @@ def gen_text(common):
 
     return text
 
+def rescale_to_fit(img, text, font):
+    """
+    args:
+        -img : image to rescale to fit to text width
+        -text : text string containing number plate info
+        -font : loaded font with its respective font-size
+    return:
+        -re_img : rescaled image
+    """
+    """
+    @TODO : Complete this function
+    """
+    re_img = img
+    return re_img
+
 def render(n_imgs, common, fonts, bg_imgs, out_dir):
     """
     args:
@@ -135,6 +150,9 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir):
         font_type = fonts[font_name]
         font_size = random.choice(font_type.keys())
         font = font_type[font_size]
+
+        # Rescale bg_img to fit text width
+        bg_img = rescale_to_fit(bg_img, plate_text, font)
 
         # Overlay text on bg image
         canvas = ImageDraw.Draw(bg_img)
