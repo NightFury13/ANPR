@@ -120,10 +120,21 @@ def rescale_to_fit(img, text, font):
     return:
         -re_img : rescaled image
     """
-    """
-    @TODO : Complete this function
-    """
-    re_img = img
+    t_height = max(font.getsize(c)[1] for c in text)
+    t_width, t_height = 0, 0
+    for c in text:
+        char_size = font.getsize(c)
+        t_width += char_size[0]
+        t_height = max(t_height, char_size[1])
+
+    re_w, re_h = img.size
+    if re_w < t_width:
+        re_w = int(t_width * 1.2)
+    if re_h < t_height:
+        re_h = int(t_height * 1.2)
+
+    re_img = img.resize((re_w, re_h), resample=Image.BILINEAR)
+
     return re_img
 
 def render(n_imgs, common, fonts, bg_imgs, out_dir):
@@ -153,6 +164,7 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir):
 
         # Rescale bg_img to fit text width
         bg_img = rescale_to_fit(bg_img, plate_text, font)
+        bg_img_size = bg_img.size
 
         # Overlay text on bg image
         canvas = ImageDraw.Draw(bg_img)
@@ -160,8 +172,8 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir):
         TODO : Add offset for starting co-ordinate based on image type (fetch from image name).
              : Randomize color extraction.
         """
-        x_cood = 100
-        y_cood = (200-int(font_size))/2
+        x_cood = int(bg_img_size[0]*0.1)
+        y_cood = int(bg_img_size[1]*0.1)
 
         canvas.text((x_cood, y_cood), plate_text, (0,0,0), font=font)
 
