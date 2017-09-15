@@ -138,13 +138,15 @@ def rescale_to_fit(img, text, font):
 
     return re_img
 
-def render(n_imgs, common, fonts, bg_imgs, out_dir):
+def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
     """
     args:
-        -n_imgs : number of images to render.
-        -common : dict of common variables.
-        -fonts  : dict of loaded fonts.
-        -bg_imgs: dict of loaded bg images.
+        -n_imgs   : number of images to render.
+        -common   : dict of common variables.
+        -fonts    : dict of loaded fonts.
+        -bg_imgs  : dict of loaded bg images.
+        -out_dir  : path of directory to store outputs in.
+        -mask_dir : name of directory to store masks in.
     return:
         None
     """
@@ -176,12 +178,19 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir):
         x_cood = int(bg_img_size[0]*0.1)
         y_cood = int(bg_img_size[1]*0.1)
         color = int(random.random()*50)
-
         canvas.text((x_cood, y_cood), plate_text, (color, color, color), font=font)
 
-        # Save Image
+        # Overlay text on white background
+        white_img = Image.new("RGB", (bg_img_size), "white")
+        canvas = ImageDraw.Draw(white_img)
+        canvas.text((x_cood, y_cood), plate_text, (0,0,0), font=font)
+
+        # Save Images
         out_img_name = '_'.join([bg_img_name.split('.')[0], font_name, font_size, plate_text, '.png'])
         bg_img.save(os.path.join(out_dir, out_img_name))
+
+        out_mask_name = 'mask_'+out_img_name
+        white_img.save(os.path.join(out_dir, mask_dir, out_mask_name))
 
         bar.update(i)
 
@@ -192,6 +201,7 @@ if __name__=='__main__':
     parser.add_argument('--font_dir',type=str,nargs='?',help='path to fonts directory',default='./fonts')
     parser.add_argument('--bg_imgs_dir',type=str,nargs='?',help='path to bg-images directory',default='./cleaned')
     parser.add_argument('--out_dir',type=str,nargs='?',help='path to store the rendered images',default='./out_render')
+    parser.add_argument('--mask_dir',type=str,nargs='?',help='name of directory to be created for character mask images',default='masks')
     parser.add_argument('--n_imgs',type=int,nargs='?',help='number of images to render',default='100')
     args = parser.parse_args()
 
@@ -204,5 +214,8 @@ if __name__=='__main__':
     print "[INFO] Loading Common Variables"
     common = load_common()
 
+    # Create folder for character-masks
+    os.mkdir(os.path.join(args.out_dir, args.mask_dir))
+
     print "[INFO] Rendering Synthetic Images"
-    render(args.n_imgs, common, fonts, bg_imgs, args.out_dir)
+    render(args.n_imgs, common, fonts, bg_imgs, args.out_dir, args.mask_dir)
