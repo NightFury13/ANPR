@@ -128,7 +128,8 @@ def rescale_to_fit(img, text, font):
         t_height = max(t_height, char_size[1])
 
     re_w, re_h = img.size
-    if re_w < t_width:
+    offset = re_w*0.2
+    if re_w < t_width+offset:
         re_w = int(t_width * 1.2)
     if re_h < t_height:
         re_h = int(t_height * 1.2)
@@ -174,8 +175,9 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir):
         """
         x_cood = int(bg_img_size[0]*0.1)
         y_cood = int(bg_img_size[1]*0.1)
+        color = int(random.random()*50)
 
-        canvas.text((x_cood, y_cood), plate_text, (0,0,0), font=font)
+        canvas.text((x_cood, y_cood), plate_text, (color, color, color), font=font)
 
         # Save Image
         out_img_name = '_'.join([bg_img_name.split('.')[0], font_name, font_size, plate_text, '.png'])
@@ -187,10 +189,10 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir):
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Render synthetic number plates.')
-    parser.add_argument('font_dir',type=str,nargs='?',help='path to fonts directory',default='./fonts')
-    parser.add_argument('bg_imgs_dir',type=str,nargs='?',help='path to bg-images directory',default='./cleaned')
-    parser.add_argument('out_dir',type=str,nargs='?',help='path to store the rendered images',default='./out_render')
-    parser.add_argument('n_imgs',type=int,nargs='?',help='number of images to render',default='100')
+    parser.add_argument('--font_dir',type=str,nargs='?',help='path to fonts directory',default='./fonts')
+    parser.add_argument('--bg_imgs_dir',type=str,nargs='?',help='path to bg-images directory',default='./cleaned')
+    parser.add_argument('--out_dir',type=str,nargs='?',help='path to store the rendered images',default='./out_render')
+    parser.add_argument('--n_imgs',type=int,nargs='?',help='number of images to render',default='100')
     args = parser.parse_args()
 
     print "[INFO] Loading Fonts"
