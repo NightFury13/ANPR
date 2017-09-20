@@ -186,7 +186,7 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
         canvas.text((x_cood, y_cood), plate_text, (0,0,0), font=font)
 
         # Save Images
-        out_img_name = '_'.join([bg_img_name.split('.')[0], font_name, font_size, plate_text, '.png'])
+        out_img_name = '_'.join([bg_img_name.split('.')[0], font_name, font_size, plate_text]).replace(' ','-')+'.png'
         bg_img.save(os.path.join(out_dir, out_img_name))
 
         out_mask_name = 'mask_'+out_img_name
