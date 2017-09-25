@@ -4,20 +4,22 @@
 @Author : Mohit Jain
 @Email  : develop13mohit@gmail.com
 
-@About  : Script to render simple number plate images. 
+@About  : Script to render simple number plate images.
 """
 
 # Imports
 import os
 import sys
 import random
-
+import datetime
 import argparse
 import progressbar
 
+import numpy as np
+import cv2
 from PIL import Image
 from PIL import ImageFont
-from PIL import ImageDraw 
+from PIL import ImageDraw
 
 def load_fonts(font_dir):
     """
@@ -35,11 +37,11 @@ def load_fonts(font_dir):
     for i, font in enumerate(font_tffs):
         font_name = '-'.join(font.split('/')[-1].split('.')[:-1]).replace(' ','-')
         fonts[font_name] = {}
-        
+
         for size in font_sizes:
             fonts[font_name][str(size)] = ImageFont.truetype(font, size)
-        
-        bar.update(i)   
+
+        bar.update(i)
 
     print "Done."
 
@@ -53,7 +55,7 @@ def load_bg_imgs(bg_imgs_dir):
         -bg_imgs : dictionary of bg image paths with image-name as key
     """
     bg_imgs = {}
-    
+
     bg_imgs_path = [os.path.join(bg_imgs_dir,i) for i in os.listdir(bg_imgs_dir) if i.endswith('.png')]
 
     bar = progressbar.ProgressBar(maxval=len(bg_imgs_path)).start()
@@ -71,7 +73,7 @@ def load_common():
         -common : dictionary containing common variables for number plate text generation.
     """
     common = {}
-    
+
     STATES = ['AN','AP','AP','AP','AP','AR','AS','BR','CG','CH','DD','DL','DL','DL','DL','DL','DN','GA','GJ','HR','HP','JH','JK','KA','KL','LD','MH','    ML','MN','MP','MP','MP','MP','MZ','NL','OD','PB','PY','RJ','SK','TN','TR','TS','UK','UP','WB']
     NUMBERS = '0123456789'
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -103,7 +105,7 @@ def gen_text(common):
     dig4 = random.choice(common['NUMBERS'])
     dig5 = random.choice(common['NUMBERS'])
     dig6 = random.choice(common['NUMBERS'])
-    
+
     """
     TODO : Support multiple formats.
     """
@@ -137,6 +139,37 @@ def rescale_to_fit(img, text, font):
     re_img = img.resize((re_w, re_h), resample=Image.BILINEAR)
 
     return re_img
+
+def perspective_dist(img, pts1=None, pts2=None):
+    """
+    args:
+        -img   : input image
+        -pts1  : set of points to map from
+        -pts2  : set of points to map to
+    return:
+        -d_img : distorted image
+    """
+    cv_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    rows,cols,ch = cv_img.shape
+
+    if not pts1:
+        pts1 = np.float32([[0,0],[cols,0],[0,rows],[cols,rows]])
+    if not pts2:
+        # TODO : Add a better logic here. (Some randomization?)
+        seed = random.random()
+        if seed < 0.4:
+            pts2 = np.float32([[0,0],[int(0.8*cols),int(0.1*rows)],[0,rows],[int(0.8*cols),int(0.7*rows)]])
+        elif seed < 0.8:
+            pts2 = np.float32([[int(0.1*cols),int(0.15*rows)],[cols,0],[int(0.15*cols),int(0.7*rows)],[cols,int(0.8*rows)]])
+        else:
+            pts2 = np.float32([[int(0.1*cols),int(0.15*rows)],[int(0.7*cols),int(0.1*rows)],[int(0.2*cols),int(0.8*rows)],
+                                    [int(0.9*cols),int(0.7*rows)]])
+
+    M = cv2.getPerspectiveTransform(pts1,pts2)
+    cv_d_img = cv2.warpPerspective(cv_img,M,(cols,rows))
+    d_img = Image.fromarray(cv2.cvtColor(cv_d_img, cv2.COLOR_BGR2RGB))
+
+    return d_img
 
 def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
     """
@@ -185,6 +218,10 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
         canvas = ImageDraw.Draw(white_img)
         canvas.text((x_cood, y_cood), plate_text, (0,0,0), font=font)
 
+        # Add perspective noise
+        if random.random()<0.6:
+            bg_img = perspective_dist(bg_img)
+
         # Save Images
         out_img_name = '_'.join([bg_img_name.split('.')[0], font_name, font_size, plate_text]).replace(' ','-')+'.png'
         bg_img.save(os.path.join(out_dir, out_img_name))
@@ -197,10 +234,13 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
     print "Done."
 
 if __name__=='__main__':
+    now = datetime.datetime.now()
+    def_folder = 'render_'+str(now)[:10]
+
     parser = argparse.ArgumentParser(description='Render synthetic number plates.')
     parser.add_argument('--font_dir',type=str,nargs='?',help='path to fonts directory',default='./fonts')
     parser.add_argument('--bg_imgs_dir',type=str,nargs='?',help='path to bg-images directory',default='./cleaned')
-    parser.add_argument('--out_dir',type=str,nargs='?',help='path to store the rendered images',default='./out_render')
+    parser.add_argument('--out_dir',type=str,nargs='?',help='path to store the rendered images',default='./out_render/'+def_folder)
     parser.add_argument('--mask_dir',type=str,nargs='?',help='name of directory to be created for character mask images',default='masks')
     parser.add_argument('--n_imgs',type=int,nargs='?',help='number of images to render',default='100')
     args = parser.parse_args()
@@ -215,6 +255,8 @@ if __name__=='__main__':
     common = load_common()
 
     # Create folder for character-masks
+    if not os.path.exists(args.out_dir):
+        os.mkdir(args.out_dir)
     os.mkdir(os.path.join(args.out_dir, args.mask_dir))
 
     print "[INFO] Rendering Synthetic Images"
