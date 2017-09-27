@@ -16,6 +16,8 @@ import argparse
 import progressbar
 
 import numpy as np
+from skimage.util import random_noise
+
 import cv2
 from PIL import Image
 from PIL import ImageFont
@@ -200,6 +202,24 @@ def skew_dist(img, pts1=None, pts2=None, skew=None):
 
     return s_img
 
+def add_noise(img, n_type=None):
+    """
+    args:
+        -img    : input PIL image
+        -n_type : type of noise to be added, one of 'gaussian','localvar','poisson','salt','pepper','s&p','speckle'
+    return:
+        -n_img  : noisy PIL image
+    """
+    cv_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    if not n_type:
+        modes = ['gaussian','localvar','poisson','salt','pepper','s&p','speckle']
+        n_type = random.choice(modes)
+
+    cv_n_img = random_noise(cv_img, mode=n_type)*255 #random_noise return image in 0->1 format.
+    n_img = Image.fromarray(cv2.cvtColor(cv_n_img.astype(np.uint8), cv2.COLOR_BGR2RGB))
+
+    return n_img
+
 def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
     """
     args:
@@ -245,6 +265,10 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
         white_img = Image.new("RGB", (bg_img_size), "white")
         canvas = ImageDraw.Draw(white_img)
         canvas.text((x_cood, y_cood), plate_text, (0,0,0), font=font)
+
+        # Add random noise
+        if random.random()<0.7:
+            bg_img = add_noise(bg_img)
 
         # Add skew
         if random.random()<0.4:
