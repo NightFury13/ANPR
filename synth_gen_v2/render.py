@@ -143,11 +143,11 @@ def rescale_to_fit(img, text, font):
 def perspective_dist(img, pts1=None, pts2=None):
     """
     args:
-        -img   : input image
+        -img   : input PIL image
         -pts1  : set of points to map from
         -pts2  : set of points to map to
     return:
-        -d_img : distorted image
+        -d_img : distorted PIL image
     """
     cv_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
     rows,cols,ch = cv_img.shape
@@ -155,21 +155,50 @@ def perspective_dist(img, pts1=None, pts2=None):
     if not pts1:
         pts1 = np.float32([[0,0],[cols,0],[0,rows],[cols,rows]])
     if not pts2:
-        # TODO : Add a better logic here. (Some randomization?)
+        # TODO  : Add a better logic here. (Some randomization?)
+        #       : Replace hard-coded co-ordinates of pts2 with pts1 dependencies.
         seed = random.random()
+        scale = random.uniform(0.1, 0.3)
+        n_scale = 1-scale
         if seed < 0.4:
-            pts2 = np.float32([[0,0],[int(0.8*cols),int(0.1*rows)],[0,rows],[int(0.8*cols),int(0.7*rows)]])
+            pts2 = np.float32([[0,0],[int(n_scale*cols),int(scale*rows)],[0,rows],[int(n_scale*cols),int(n_scale*rows)]])
         elif seed < 0.8:
-            pts2 = np.float32([[int(0.1*cols),int(0.15*rows)],[cols,0],[int(0.15*cols),int(0.7*rows)],[cols,int(0.8*rows)]])
+            pts2 = np.float32([[int(scale*cols),int(scale*rows)],[cols,0],[int(scale*cols),int(n_scale*rows)],[cols,int(n_scale*rows)]])
         else:
-            pts2 = np.float32([[int(0.1*cols),int(0.15*rows)],[int(0.7*cols),int(0.1*rows)],[int(0.2*cols),int(0.8*rows)],
-                                    [int(0.9*cols),int(0.7*rows)]])
+            pts2 = np.float32([[int(scale*cols),int(scale*rows)],[int(n_scale*cols),int(scale*rows)],[int(scale*cols),int(n_scale*rows)],
+                                    [int(n_scale*cols),int(n_scale*rows)]])
 
     M = cv2.getPerspectiveTransform(pts1,pts2)
     cv_d_img = cv2.warpPerspective(cv_img,M,(cols,rows))
     d_img = Image.fromarray(cv2.cvtColor(cv_d_img, cv2.COLOR_BGR2RGB))
 
     return d_img
+
+def skew_dist(img, pts1=None, pts2=None, skew=None):
+    """
+    args:
+        -img   : input PIL image
+        -pts1  : reference source points
+        -pts2  : reference destination points
+        -skew  : skew factor
+    return:
+        -s_img : skewed PIL image
+    """
+    cv_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    rows,cols,ch = cv_img.shape
+
+    if not skew:
+        skew = random.randint(-100, 100)
+    if not pts1:
+        pts1 = np.float32([[0,0],[cols,0],[0,rows]])
+    if not pts2:
+        pts2 = np.float32([[pts1[0][0]+skew,pts1[0][1]],[pts1[1][0]+skew,pts1[1][1]],pts1[2]])
+
+    M = cv2.getAffineTransform(pts1,pts2)
+    cv_s_img = cv2.warpAffine(cv_img,M,(cols+np.abs(skew),rows))
+    s_img = Image.fromarray(cv2.cvtColor(cv_s_img, cv2.COLOR_BGR2RGB))
+
+    return s_img
 
 def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
     """
@@ -206,7 +235,6 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
         canvas = ImageDraw.Draw(bg_img)
         """
         TODO : Add offset for starting co-ordinate based on image type (fetch from image name).
-             : Randomize color extraction.
         """
         x_cood = int(bg_img_size[0]*0.1)
         y_cood = int(bg_img_size[1]*0.1)
@@ -217,6 +245,10 @@ def render(n_imgs, common, fonts, bg_imgs, out_dir, mask_dir):
         white_img = Image.new("RGB", (bg_img_size), "white")
         canvas = ImageDraw.Draw(white_img)
         canvas.text((x_cood, y_cood), plate_text, (0,0,0), font=font)
+
+        # Add skew
+        if random.random()<0.4:
+            bg_img = skew_dist(bg_img)
 
         # Add perspective noise
         if random.random()<0.6:
