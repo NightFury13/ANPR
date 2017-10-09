@@ -111,7 +111,16 @@ def gen_text(common):
     """
     TODO : Support multiple formats.
     """
-    text = "{}{}{}{}{}{}{}{}{}{}{}{}".format(state, delim, dig1, dig2, delim, let1, let2, delim, dig3, dig4, dig5, dig6)
+    formats = ["{}{}{}{}{}{}{}{}{}{}{}{}".format(state, delim, dig1, dig2, delim, let1, let2, delim, dig3, dig4, dig5, dig6),
+                "{}{}{}{}{}{}{}{}{}{}{}".format(state, delim, dig1, delim, let1, let2, delim, dig3, dig4, dig5, dig6),
+                "{}{}{}{}{}{}{}{}{}{}{}".format(state, delim, dig1, dig2, delim, let1, delim, dig3, dig4, dig5, dig6),
+                "{}{}{}{}{}{}{}{}{}{}{}".format(state, delim, dig1, dig2, delim, let1, let2, delim, dig3, dig4, dig5),
+            ]
+
+    if random.random()<0.7:
+        text = formats[0]
+    else:
+        text = random.choice(formats)
 
     return text
 
